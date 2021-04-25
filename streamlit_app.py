@@ -4,6 +4,12 @@ import math
 import pandas as pd
 import streamlit as st
 
+import numpy as np
+import cv2
+from cv2 import imread
+from cv2 import rectangle
+from cv2 import CascadeClassifier
+
 """
 # Welcome to Streamlit!
 
@@ -16,23 +22,50 @@ In the meantime, below is an example of what you can do with just a few lines of
 """
 
 
+def get_opencv_img_from_buffer(buffer, flags):
+    # https://stackoverflow.com/questions/13329445/how-to-read-image-from-in-memory-buffer-stringio-or-from-url-with-opencv-pytho
+    bytes_as_np_array = np.frombuffer(buffer.read(), dtype=np.uint8)
+    return cv2.imdecode(bytes_as_np_array, flags)
+
 with st.echo(code_location='below'):
-    total_points = st.slider("Number of points in spiral", 1, 5000, 2000)
-    num_turns = st.slider("Number of turns in spiral", 1, 100, 9)
+    st.text(f"Hello, it s me, with opencv v. {cv2.__version__}")
+    
+    
+    img_file_buffer = st.file_uploader(  
+                                      "Upload an image with faces",
+                                      type=["jpg"],
+                                      accept_multiple_files=False
+                                      )
 
-    Point = namedtuple('Point', 'x y')
-    data = []
 
-    points_per_turn = total_points / num_turns
 
-    for curr_point_num in range(total_points):
-        curr_turn, i = divmod(curr_point_num, points_per_turn)
-        angle = (curr_turn + 1) * 2 * math.pi * i / points_per_turn
-        radius = curr_point_num / total_points
-        x = radius * math.cos(angle)
-        y = radius * math.sin(angle)
-        data.append(Point(x, y))
+    if img_file_buffer is not None:
 
-    st.altair_chart(alt.Chart(pd.DataFrame(data), height=500, width=500)
-        .mark_circle(color='#0068c9', opacity=0.5)
-        .encode(x='x:Q', y='y:Q'))
+        img = get_opencv_img_from_buffer(img_file_buffer,None)#'tmp/test1.jpg')
+
+        st.text(f"Object type: {type(img)}")
+        st.image(img)
+
+        # Load bbox classifier
+        classifier = CascadeClassifier('models/haar_frontalface_default.xml')
+        bboxes = classifier.detectMultiScale(img)
+        st.text(bboxes)
+
+        # Print bboxes over image
+        # print bounding box for each detected face
+        sub_images = []
+        for box in bboxes:
+            # extract
+            x, y, width, height = box
+            x2, y2 = x + width, y + height
+            # draw a rectangle over the img
+            rectangle(img, (x, y), (x2, y2), (0,0,255), 1)
+
+            sub_images.append( img[y:y2, x:x2] )
+        # show the image
+        #imshow('face detection', pixels)
+        st.image(img)
+
+        # print sub images
+        for si in sub_images:
+            st.image(si)
