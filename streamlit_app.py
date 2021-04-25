@@ -12,11 +12,17 @@ from cv2 import rectangle
 from cv2 import CascadeClassifier
 import yaml
 import requests
+import random
+import os
+import string
+import shutil
 
 # send
 import base64
 import json
 import pickle
+
+DEBUG_MODE = True
 
 def get_opencv_img_from_buffer(buffer, flags):
     # https://stackoverflow.com/questions/13329445/how-to-read-image-from-in-memory-buffer-stringio-or-from-url-with-opencv-pytho
@@ -67,9 +73,6 @@ with st.echo(code_location='below'):
         st.image(img)
 
         # print sub images
-        st.title("Will send the first face to peltarion API")
-        for si in sub_images:
-            st.image(si)
 
         # Finally, query P model
         st.text("Now going to query the model, using the following config")
@@ -80,16 +83,28 @@ with st.echo(code_location='below'):
         st.text(f"URL: {url}")
         st.text(f"Token: {token}")
         
-        # Not really optimize, good for an hackathon
-        for si in sub_images:
-            fname = "tmp/tobesent.jpg"
-            imwrite(fname, si)
+        if len(sub_images) >=1:
+            # Not really optimize, good for an hackathon
+            subfname = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+            subfname = f"tmp/{subfname}"
+            os.makedirs(subfname)
+            for si in sub_images:
+                fname = f"{subfname}/tobesent.jpg"
+                imwrite(fname, si)
 
-            headers = {'Authorization': 'Bearer ' + token}
-            files = {"image": open(fname, "rb")}
-            x = requests.post(url, files = files, headers= headers)
+                headers = {'Authorization': 'Bearer ' + token}
+                files = {"image": open(fname, "rb")}
+                x = requests.post(url, files = files, headers= headers)
 
-            st.title("Request Text response")
-            st.text(x.text)
+                st.title("Image and response")
+                st.image(si)
+                st.text(x.text)
+            
+            if not DEBUG_MODE:
+                shutil.rmtree(subfname, ignore_errors=True)
+        else:
+            st.text("No image to send to API")
+
+            
 
 

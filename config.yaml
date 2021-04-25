@@ -1,3 +1,9 @@
 peltarion_endpoint_image:
+   url: "https://a.gcp-eu-west-1.platform.peltarion.com/deployment/e908e12b-15c3-4817-ae3f-29bf1c38b6df/forward"
+   token: "0abdd5eb-559f-47f0-b762-1e339b9ae644"
+   version: "v2"
+
+peltarion_endpoint_image_v1:
    url: "https://a.gcp-eu-west-1.platform.peltarion.com/deployment/48f51fe8-e8b7-4975-bcf0-5d92d4750f46/forward"
    token: "6fd977a0-00b7-4de4-8879-30033cd7fefd"
+   version: "v1"
