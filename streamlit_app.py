@@ -7,7 +7,7 @@ import streamlit as st
 import numpy as np
 import sidekick
 import cv2
-from cv2 import imread
+from cv2 import imread, imwrite
 from cv2 import rectangle
 from cv2 import CascadeClassifier
 import yaml
@@ -78,7 +78,11 @@ with st.echo(code_location='below'):
         url=configs["peltarion_endpoint_image"]["url"]
         token=configs["peltarion_endpoint_image"]["token"]
 
+        # Save the image to double check
+        fname = "tmp/tobesent.jpg"
+        imwrite(fname, sub_images[0])
         
+        """
         header = {'Authorization': 'Bearer {}'.format(token), 'Content-Type': 'application/json'}
         payload = {"rows":
                     [{"image": im2encode(sub_images[0])}]
@@ -89,7 +93,6 @@ with st.echo(code_location='below'):
                                     url,
                                     headers=header,
                                     json=payload)
-        
         st.title("Request URL")
         st.text(response.request.url)
         st.title("Request body")
@@ -98,4 +101,15 @@ with st.echo(code_location='below'):
         st.text(response.request.headers)
         st.title("Request response")
         st.text(response)
+
+        """
+
+        headers = {'Authorization': 'Bearer ' + token}
+        files = {"image": open(fname, "rb")} # Rename "image" with the name of your input feature
+        x = requests.post(url, files = files, headers= headers)
+
+
+        st.title("Request Text response")
+        st.text(x.text)
+
 
