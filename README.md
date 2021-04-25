@@ -20,6 +20,7 @@ I'm not just used to work with images:
 * [Query peltarion API](https://peltarion.com/knowledge-center/documentation/peltarion-apis/deployment-api)
 * [Godsend on sending images in json](https://stackoverflow.com/questions/55892362/sending-opencv-image-in-json)
 * [Install from git in requirements.txt](https://stackoverflow.com/questions/16584552/how-to-state-in-requirements-txt-a-direct-github-source)
+* [How to access uploaded video in streamlit by opencv?](https://discuss.streamlit.io/t/how-to-access-uploaded-video-in-streamlit-by-open-cv/5831). [Alternative](https://discuss.streamlit.io/t/live-webcam-feed-into-the-web-app/397)
 
 
 https://stackoverflow.com/questions/20658572/python-requests-print-entire-http-request-raw
