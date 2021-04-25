@@ -17,14 +17,19 @@ import random
 import os
 import string
 import shutil
+from operator import add
 
 import base64
 import json
 import pickle
 import tempfile
+import matplotlib.pyplot as plt
+import matplotlib
 
+pd.options.plotting.backend = 'matplotlib'
 DEBUG_MODE = False
-
+MAX_FRAMES = 16
+VERBOSE = False
 with open('config.yaml') as file:
     configs = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -98,10 +103,10 @@ def process_image(img, verbose=False):
 
             if max(classes.values()) > 0.5 and sentiments is not None:
                 c = c+1
-                sentiments = sentiments + classes.values()
+                sentiments =  [sum(x) for x in zip(list(sentiments), list(classes.values()) )]
             elif max(classes.values()) > 0.5 and sentiments is None:
                 c = c+1
-                sentiments =  classes.values()
+                sentiments =  list(classes.values())
 
                 # TODO: adjust for multiple bboxes
                 bbs = bb
@@ -121,21 +126,37 @@ def process_image(img, verbose=False):
 
     return sentiments, c, bbs
 
-with st.echo(code_location='below'):
-    if DEBUG_MODE:
-        st.text(f"Hello, it s me, with opencv v. {cv2.__version__}")
-    file_buffer = st.file_uploader(  
-                                      "Upload an image with faces",
-                                      type=["mp4"],
-                                      accept_multiple_files=False
-                                      )
-    MAX_FRAMES = 14
-    VERBOSE = True
+@st.cache
+def read_data(pklname, allow_output_mutation=True, show_spinner=False):
+    df = pd.read_pickle(pklname)
+    if df.index.name != "idx":
+        df["idx"] = list(range(0, df.shape[0]))
+    df.set_index("idx", inplace=True)
+    #df = df.round(2) * 100
+    min_val = int(df.index.min())
+    max_val = int(df.index.max())
+
+    return df, min_val, max_val
+
+def make_plot(source):
+    #https://discuss.streamlit.io/t/cache-matplotlib-figure/12035/2
+    f, ax = plt.subplots(1,1, figsize=(16,9))
+    source.plot(ax=ax)
+    for col in source.columns:
+        if col == "neutral":
+            plt.fill_between(df.index, source[col], alpha=0.1)
+        else:
+            plt.fill_between(df.index, source[col], alpha=0.4)
+    return f
+
+@st.cache
+def process_video(file_buffer):
+    pklname = None
     if file_buffer is not None:
         tfile = tempfile.NamedTemporaryFile(delete=False) 
         tfile.write(file_buffer.read())
         vf = cv2.VideoCapture(tfile.name)
-        stframe = st.empty()
+        #stframe = st.empty()
         i = 0
         frames_loc = []
         os.makedirs("tmp/video", exist_ok=True)
@@ -175,12 +196,65 @@ with st.echo(code_location='below'):
         final_res["image"] = img_list
         final_res["bbox"] = bbs_list
 
-        st.subheader('Raw data')
-        st.write(final_res)
+        if DEBUG_MODE:
+            st.subheader('Raw data')
+            st.write(final_res)
 
         if DEBUG_MODE: 
             final_res.to_csv("sample.csv")
-            final_res.to_pickle("sample.pkl")
-            
+        
+        pklname = random.choice(string.ascii_uppercase + string.digits) + ".pkl"
+        final_res.to_pickle(pklname)
+        st.text("Video analyzed")
+
+    return pklname
+    
+
+
+#with st.echo(code_location='none'): # code_location='below'
+st.set_page_config(layout="wide")
+if DEBUG_MODE:
+    st.text(f"Hello, it s me, with opencv v. {cv2.__version__}")
+file_buffer = st.file_uploader(  
+                                    "Upload an image with faces",
+                                    type=["mp4"],
+                                    accept_multiple_files=False
+                                    )
+pklname = None
+pklname = process_video(file_buffer)
+# Viz
+if pklname:
+    df, min_val, max_val = read_data(pklname)
+    r = st.slider(label="select frame", min_value=min_val,
+            max_value=max_val,value=0)
+
+    st.text(r)
+    
+    
+    imgloaded = get_opencv_img_from_buffer(open(df.loc[r, "image"],"rb"), None)
+
+    #st.text(df.loc[r]["bbox"])
+    x,y,x2,y2 = list(df.loc[r]["bbox"])
+    rectangle(imgloaded, (x, y), (x2, y2), (0,0,255), 1)
+    
+    col1, col2, col3 = st.beta_columns(3)
+    col1.header("Frame")
+    col1.image(imgloaded)
+
+    col2.header("Sent")
+    #st.text(plt.style.available)
+    plt.style.use("fivethirtyeight") # fivethirtyeight
+    display_sentiment = ["other","happiness","sad","anger","fear","neutral"]
+    source = df[display_sentiment]
+    
+    f = make_plot(source)
+    plt.axvline(x=r, color="black")
+    plt.legend(loc=2, prop={'size': 24})
+    col2.pyplot(fig=f)
+
+    col3.header("Details")
+    col3.write(df.loc[r, display_sentiment].astype(float).round(2)*100)
+
+
 
 

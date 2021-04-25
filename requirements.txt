@@ -10,4 +10,3 @@ dill
 git+https://github.com/Peltarion/sidekick#egg=sidekick
 pyyaml
 plotly
-altair_pandas
