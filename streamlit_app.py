@@ -23,18 +23,9 @@ def get_opencv_img_from_buffer(buffer, flags):
     bytes_as_np_array = np.frombuffer(buffer.read(), dtype=np.uint8)
     return cv2.imdecode(bytes_as_np_array, flags)
 
-def im2json(im):
-    """Convert a Numpy array to JSON string"""
-    # https://stackoverflow.com/questions/55892362/sending-opencv-image-in-json
-    imdata = pickle.dumps(im)
-    jstr = json.dumps({"image": base64.b64encode(imdata).decode('ascii')})
-    return jstr
-
 def im2encode(im):
-    """Convert a Numpy array to JSON string"""
-    # https://stackoverflow.com/questions/55892362/sending-opencv-image-in-json
     imdata = pickle.dumps(im)
-    jstr = base64.b64encode(imdata).decode('ascii')
+    jstr = base64.b64encode(imdata).decode('utf-8')
     return jstr
 
 with open('config.yaml') as file:
@@ -76,6 +67,7 @@ with st.echo(code_location='below'):
         st.image(img)
 
         # print sub images
+        st.title("Will send the first face to peltarion API")
         for si in sub_images:
             st.image(si)
 
@@ -85,15 +77,14 @@ with st.echo(code_location='below'):
 
         url=configs["peltarion_endpoint_image"]["url"]
         token=configs["peltarion_endpoint_image"]["token"]
+
         
         header = {'Authorization': 'Bearer {}'.format(token), 'Content-Type': 'application/json'}
         payload = {"rows":
                     [{"image": im2encode(sub_images[0])}]
-                    #[{"image": sub_images[0]}]
                   }
 
         st.text(f"Sending request to {url}")
-
         response = requests.request("POST", 
                                     url,
                                     headers=header,
@@ -105,5 +96,6 @@ with st.echo(code_location='below'):
         st.text(response.request.body)
         st.title("Request headers")
         st.text(response.request.headers)
-
+        st.title("Request response")
         st.text(response)
+
