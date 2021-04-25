@@ -23,7 +23,7 @@ import json
 import pickle
 import tempfile
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 with open('config.yaml') as file:
     configs = yaml.load(file, Loader=yaml.FullLoader)
@@ -44,18 +44,19 @@ def im2encode(im):
     return jstr
 
 def process_image(img, verbose=False):
-    bboxes = classifier.detectMultiScale(img)
+    bboxes_detected = classifier.detectMultiScale(img)
     # Print bboxes over image
     # print bounding box for each detected face
     sub_images = []
-    for box in bboxes:
+    bboxes = []
+    for box in bboxes_detected:
         # extract
         x, y, width, height = box
         x2, y2 = x + width, y + height
         # draw a rectangle over the img
         rectangle(img, (x, y), (x2, y2), (0,0,255), 1)
-
-        sub_images.append( cv2.resize(img[y:y2, x:x2], (48,48) ))
+        sub_images.append(cv2.resize(img[y:y2, x:x2], (48,48)))
+        bboxes.append([x,y,x2,y2])
 
     if verbose:
         st.title("Base Image and responses")
@@ -66,15 +67,16 @@ def process_image(img, verbose=False):
         st.text(f"Token: {token}")
     
     # Loops over images in the frame
+    sentiments = None
+    bbs = None
+    c = 0
     if len(sub_images) >=1:
         # Not really optimize, good for an hackathon
         subfname = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
         subfname = f"tmp/{subfname}"
         os.makedirs(subfname)
         
-        sentiments = None
-        c = 0
-        for si in sub_images:
+        for si, bb in zip(sub_images, bboxes):
             fname = f"{subfname}/tobesent.jpg"
             imwrite(fname, si)
 
@@ -100,6 +102,10 @@ def process_image(img, verbose=False):
             elif max(classes.values()) > 0.5 and sentiments is None:
                 c = c+1
                 sentiments =  classes.values()
+
+                # TODO: adjust for multiple bboxes
+                bbs = bb
+
         
         if not DEBUG_MODE:
             shutil.rmtree(subfname, ignore_errors=True)
@@ -113,7 +119,7 @@ def process_image(img, verbose=False):
     if verbose:
         st.text(f"Got sentiments: {sentiments} over {c} frames")
 
-    return sentiments, c
+    return sentiments, c, bbs
 
 with st.echo(code_location='below'):
     if DEBUG_MODE:
@@ -123,8 +129,8 @@ with st.echo(code_location='below'):
                                       type=["mp4"],
                                       accept_multiple_files=False
                                       )
-    MAX_FRAMES = 10
-    VERBOSE = False
+    MAX_FRAMES = 14
+    VERBOSE = True
     if file_buffer is not None:
         tfile = tempfile.NamedTemporaryFile(delete=False) 
         tfile.write(file_buffer.read())
@@ -133,6 +139,7 @@ with st.echo(code_location='below'):
         i = 0
         frames_loc = []
         os.makedirs("tmp/video", exist_ok=True)
+
         while vf.isOpened():
             ret, frame = vf.read()
             # if frame is read correctly ret is True
@@ -152,24 +159,28 @@ with st.echo(code_location='below'):
 
         img_list = []
         sent_list = []
+        bbs_list = []
         for framepath in frames_loc:
             img = get_opencv_img_from_buffer(open(framepath,"rb"),None)
-            sent, c = process_image(img, VERBOSE)
+            sent, c, bbs = process_image(img, VERBOSE)
 
             if sent is not None:
                 img_list.append(framepath)
                 sent_list.append(sent)
+                bbs_list.append(bbs)
 
 
         # TODO: hardcoded!
         final_res = pd.DataFrame(sent_list, columns = ["other", "happiness", "sad", "neutral", "anger", "fear"])
         final_res["image"] = img_list
+        final_res["bbox"] = bbs_list
 
         st.subheader('Raw data')
         st.write(final_res)
 
         if DEBUG_MODE: 
             final_res.to_csv("sample.csv")
+            final_res.to_pickle("sample.pkl")
             
 
 
