@@ -127,16 +127,16 @@ def process_image(img, verbose=False):
     return sentiments, c, bbs
 
 @st.cache
-def read_data(pklname, allow_output_mutation=True, show_spinner=False):
-    df = pd.read_pickle(pklname)
-    if df.index.name != "idx":
-        df["idx"] = list(range(0, df.shape[0]))
-    df.set_index("idx", inplace=True)
+def read_data(pklname):
+    dd = pd.read_pickle(pklname)
+    if dd.index.name != "idx":
+        dd["idx"] = list(range(0, dd.shape[0]))
+    dd.set_index("idx", inplace=True)
     #df = df.round(2) * 100
-    min_val = int(df.index.min())
-    max_val = int(df.index.max())
+    min_val = int(dd.index.min())
+    max_val = int(dd.index.max())
 
-    return df, min_val, max_val
+    return dd, min_val, max_val
 
 def make_plot(source):
     #https://discuss.streamlit.io/t/cache-matplotlib-figure/12035/2
@@ -213,13 +213,29 @@ def process_video(file_buffer):
 
 #with st.echo(code_location='none'): # code_location='below'
 st.set_page_config(layout="wide")
+'''
+# Welcome to vcoach
+
+Do you have an important meeting incoming? A sales pitch? 
+Or do you just need to express the right emotions? 
+*vcoach* analyzes your facial expression and helps by increasing your self-awareness.
+
+*vcoach* is a deep-learning powered APP built to analyze the way you present, built for demonstration purposes for the peltarion business hackhathon.
+
+## How to use
+* upload a video file of you speaking (any mp4 from youtube, from your webcam or grab a sample file [here](https://drive.google.com/file/d/1G-kTP67D5n-loiu73COlGtXcek45G_G8/view?usp=sharing) or [here](https://drive.google.com/file/d/1QDdcOlD70Udz2Fruoygvo0jd6e8e0G2U/view?usp=sharing))
+* wait some seconds and play with the output
+
+
+'''
+
 if DEBUG_MODE:
     st.text(f"Hello, it s me, with opencv v. {cv2.__version__}")
 file_buffer = st.file_uploader(  
-                                    "Upload an image with faces",
-                                    type=["mp4"],
-                                    accept_multiple_files=False
-                                    )
+                                "Upload an mp4 file of someone speaking be analyzed",
+                                type=["mp4"],
+                                accept_multiple_files=False
+                                )
 pklname = None
 pklname = process_video(file_buffer)
 # Viz
@@ -241,7 +257,7 @@ if pklname:
     col1.header("Frame")
     col1.image(imgloaded)
 
-    col2.header("Sent")
+    col2.header("Face expression")
     #st.text(plt.style.available)
     plt.style.use("fivethirtyeight") # fivethirtyeight
     display_sentiment = ["other","happiness","sad","anger","fear","neutral"]
@@ -252,9 +268,5 @@ if pklname:
     plt.legend(loc=2, prop={'size': 24})
     col2.pyplot(fig=f)
 
-    col3.header("Details")
+    col3.header("Frame analysis")
     col3.write(df.loc[r, display_sentiment].astype(float).round(2)*100)
-
-
-
-
